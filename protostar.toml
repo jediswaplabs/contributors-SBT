@@ -1,0 +1,17 @@
+["protostar.config"]
+protostar_version = "0.4.2"
+
+["protostar.project"]
+libs_path = "lib"
+
+["protostar.contracts"]
+guildSBT = [
+    "./contracts/guildSBT.cairo",
+]
+master = [
+    "./contracts/master.cairo",
+]
+
+["protostar.shared_command_configs"]
+cairo-path = ["./lib/cairo_contracts 12-09-58-939/src"]
+
