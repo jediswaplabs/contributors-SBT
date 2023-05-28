@@ -349,7 +349,7 @@ func update_contibutions{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, bitwise
     let (hashed_contributions: felt*) = alloc();
     let (hashed_contributions_len, hashed_contributions) = _hash_contributions(contributions_len, contributions, 0, hashed_contributions);
     
-    // @Reviwer calcutaing root instaed of passing root as input to make sure that caller
+    // @Reviwer calcutaing root instead of passing root as input to make sure that caller
     // does not pass the correct root and still modifies the contribution struct array.
     // @Note the current function can calculate root only if there exactly are 2^n elements 
     // let (_,root) = get_root(hashed_contributions_len, hashed_contributions);

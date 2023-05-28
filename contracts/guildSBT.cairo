@@ -232,6 +232,8 @@ func tokenURI{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     return (tokenURI,);
 }
 
+// @notice Get tier of of the user
+// @return tier
 @view
 func get_contribution_tier{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     user: felt
@@ -244,18 +246,24 @@ func get_contribution_tier{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range
     return (res,);
 }
 
+// @notice Get owner of the contract
+// @return owner
 @view
 func owner{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (owner: felt) {
     let (owner) = Ownable.owner();
     return (owner,);
 }
 
+// @notice Get master contract of the SBT
+// @return master
 @view
 func master{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (master: felt) {
     let (master) = _master.read();
     return (master,);
 }
 
+// @notice Get the contribution points limits for a tier
+// @return points
 @view
 func contribution_tier{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     tier: felt
@@ -264,6 +272,8 @@ func contribution_tier{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     return (res,);
 }
 
+// @notice Get the number of contibution tier
+// @return res 
 @view
 func number_of_tiers{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
     res: felt
@@ -272,6 +282,8 @@ func number_of_tiers{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check
     return (res,);
 }
 
+// @notice Get the base URI of the contract
+// @return res 
 @view
 func baseURI{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (res: felt) {
     let (res) = _baseURI.read();
@@ -281,6 +293,8 @@ func baseURI{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() 
 // External guildSBT
 // 
 
+// @notice update base URI of the contract
+// @param baseURI new base URI of the contract
 @external
 func update_baseURI{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     baseURI: felt
@@ -290,6 +304,9 @@ func update_baseURI{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
     return ();
 }
 
+// @notice update contribution tier points of the contract
+// @param contribution_tier_len new length of contribution tier
+// @param contribution_tier new contribution tier points.
 @external
 func update_contribution_tier{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     contribution_tier_len: felt, contribution_tier: felt*
@@ -302,6 +319,8 @@ func update_contribution_tier{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, ra
     return ();
 }
 
+// @notice update master contract of the SBT
+// @param new_master new master contract address
 @external
 func update_master{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     new_master: felt
@@ -328,6 +347,9 @@ func renounceOwnership{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     return ();
 }
 
+
+// @notice mint new SBT if contribution points limit is reached
+// @param type avatar id for the new SBT
 @external
 func safeMint{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(type: felt) {
     alloc_locals;
@@ -343,7 +365,6 @@ func safeMint{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(t
     let (points) = IMaster.design_points(contract_address=master, contributor=caller);
 
     let (contribution_tier) = _get_contribution_tier(1, points);
-    // let contribution_tier = 1;
     
     with_attr error_message("guildSBT::safeMint::Not enough points") {
         assert_not_zero(contribution_tier);
@@ -353,6 +374,10 @@ func safeMint{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(t
     _mint(caller);
     return ();
 }
+
+// @notice migrate SBT to new address, only master contract can call
+// @param old_owner current holder of SBT
+// @param new_owner new holder of SBT
 @external
 func migrate_sbt{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(old_owner: felt, new_owner: felt) {
     alloc_locals;
@@ -380,8 +405,6 @@ func migrate_sbt{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     let (token_id) = _wallet_of_owner.read(old_owner);
     let (type) = _token_type.read(old_owner);
 
-    // let (new_owner_balance_updated: Uint256) = uint256_checked_add(new_owner_balance, Uint256(1, 0));
-    // _balances.write(new_owner, new_owner_balance);
     _balances.write(new_owner, new_owner_balance + 1);
     _balances.write(old_owner, old_owner_balance - 1);
 
@@ -423,7 +446,6 @@ func _get_contribution_tier{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, rang
         Uint256(number_of_tiers, 0), Uint256(index, 0)
     );
     if (is_index_greater_than_number_of_tiers == 1) {
-        // return (index - 1)
         tempvar syscall_ptr = syscall_ptr;
         tempvar pedersen_ptr = pedersen_ptr;
         tempvar range_check_ptr = range_check_ptr;
@@ -439,7 +461,6 @@ func _get_contribution_tier{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, rang
         Uint256(points, 0), Uint256(tier_lowercap, 0)
     );
     if (is_points_less_than_tier_lowecap == 1) {
-        // return (index - 1)
         tempvar syscall_ptr = syscall_ptr;
         tempvar pedersen_ptr = pedersen_ptr;
         tempvar range_check_ptr = range_check_ptr;
@@ -461,29 +482,11 @@ func _tokenURI{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 ) -> (tokenURI: felt) {
     alloc_locals;
 
-    // let (contribution_tier_multiply_by_10: Uint256) = uint256_checked_mul(
-    //     Uint256(contribution_tier, 0), Uint256(10, 0)
-    // );
-    // let (sbt_id: Uint256) = uint256_checked_add(contribution_tier_multiply_by_10, Uint256(type, 0));
     let sbt_id: felt = ((contribution_tier + 48) * 2**8) + type + 48;
 
 
     let (baseURI) = _baseURI.read();
 
-    // let (baseURI_multiply_by_100: Uint256) = uint256_checked_mul(
-    //     Uint256(baseURI, 0), Uint256(100, 0)
-    // );
-
-    // let (baseURI_str: String) = StringCodec.felt_to_string(baseURI);
-    // let (id_str: String) = StringCodec.felt_to_string(sbt_id.low);
-
-    // let (tokenURI) = StringUtil.concat(baseURI_str, id_str);
-
-    // TODO: return baseURI + sbt_id
-    // let (tokenURI_uint256) = uint256_checked_add(
-    //     baseURI_multiply_by_100, sbt_id
-    // );
-    // let tokenURI = tokenURI_uint256.low;
     let tokenURI = baseURI*2**16 + sbt_id;
     return (tokenURI,);
 }
@@ -497,11 +500,9 @@ func _mint{pedersen_ptr: HashBuiltin*, syscall_ptr: felt*, range_check_ptr}(to: 
     let token_id = total_supply;
 
     let (balance) = _balances.read(to);
-    // let (new_balance) = balance + 1;
     _balances.write(to, balance + 1);
 
     let (total_supply) = _total_supply.read();
-    // let (new_total_supply) = total_supply + 1;
     _total_supply.write(total_supply + 1);
 
     _owners.write(token_id, to);
