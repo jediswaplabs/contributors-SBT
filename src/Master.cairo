@@ -91,6 +91,15 @@ trait IMaster<TContractState> {
     fn get_problem_solving_points(self: @TContractState, contributor: ContractAddress) -> GuildPoints;
     fn get_marcom_points(self: @TContractState, contributor: ContractAddress) -> GuildPoints;
     fn get_research_points(self: @TContractState, contributor: ContractAddress) -> GuildPoints;
+    fn get_last_update_id(self: @TContractState) -> u32;
+    fn get_last_update_time(self: @TContractState) -> u64;
+    fn get_migartion_queued_state(self: @TContractState, hash: felt252 ) -> bool;
+    fn get_dev_guild_SBT(self: @TContractState) -> ContractAddress;
+    fn get_design_guild_SBT(self: @TContractState) -> ContractAddress;
+    fn get_marcom_guild_SBT(self: @TContractState) -> ContractAddress;
+    fn get_problem_solving_guild_SBT(self: @TContractState) -> ContractAddress;
+    fn get_research_guild_SBT(self: @TContractState) -> ContractAddress;
+
 
     // external functions
     fn update_contibutions(ref self: TContractState,  month_id: u32, contributions: Array::<MontlyContribution>);
@@ -139,12 +148,8 @@ mod Master {
         _marcom_guild_SBT: ContractAddress, // @dev contract address for marcom guild SBTs
         _problem_solving_guild_SBT: ContractAddress, // @dev contract address for problem solving guild SBTs
         _research_guild_SBT: ContractAddress, // @dev contract address for research guild SBTs
-        _initialised: u8, // @dev Flag to store initialisation state
-        _queued_migrations: LegacyMap::<felt252, u8>, // @dev flag to store queued migration requests.
-        // _klast: u256, // @dev reserve0 * reserve1, as of immediately after the most recent liquidity event
-        // _locked: bool, // @dev Boolean to check reentrancy
-        // _factory: ContractAddress, // @dev Factory contract address
-        // Proxy_admin: ContractAddress, // @dev Admin contract address, to be used till we finalize Cairo upgrades.
+        _initialised: bool, // @dev Flag to store initialisation state
+        _queued_migrations: LegacyMap::<felt252, bool>, // @dev flag to store queued migration requests.
     }
 
     #[event]
@@ -192,7 +197,7 @@ mod Master {
         // @notice not sure if default is already zero or need to initialise.
         self._last_update_id.write(0_u32);
         self._last_update_time.write(0_u64);
-        self._initialised.write(0_u8);
+        self._initialised.write(false);
 
         let mut ownable_self = Ownable::unsafe_new_contract_state();
         ownable_self._transfer_ownership(new_owner: owner_);
@@ -213,9 +218,56 @@ mod Master {
             contribution.dev
         }
 
-        fn get_dev_points(self: @ContractState, contributor: ContractAddress) -> GuildPoints {
+        fn get_design_points(self: @ContractState, contributor: ContractAddress) -> GuildPoints {
             let contribution = self._contributions.read(contributor);
-            contribution.dev
+            contribution.design
+        }
+
+        fn get_problem_solving_points(self: @ContractState, contributor: ContractAddress) -> GuildPoints {
+            let contribution = self._contributions.read(contributor);
+            contribution.problem_solving
+        }
+
+        fn get_marcom_points(self: @ContractState, contributor: ContractAddress) -> GuildPoints {
+            let contribution = self._contributions.read(contributor);
+            contribution.marcom
+        }
+
+        fn get_research_points(self: @ContractState, contributor: ContractAddress) -> GuildPoints {
+            let contribution = self._contributions.read(contributor);
+            contribution.research
+        }
+
+        fn get_last_update_id(self: @ContractState) -> u32 {
+            self._last_update_id.read()
+        }
+
+        fn get_last_update_time(self: @ContractState) -> u64 {
+            self._last_update_time.read()
+        }
+
+        fn get_migartion_queued_state(self: @ContractState, hash: felt252 ) -> bool {
+            self._queued_migrations.read(hash)
+        }
+
+        fn get_dev_guild_SBT(self: @ContractState) -> ContractAddress {
+            self._dev_guild_SBT.read()
+        }
+
+        fn get_design_guild_SBT(self: @ContractState) -> ContractAddress {
+            self._design_guild_SBT.read()
+        }
+
+        fn get_marcom_guild_SBT(self: @ContractState) -> ContractAddress {
+            self._marcom_guild_SBT.read()
+        }
+
+        fn get_problem_solving_guild_SBT(self: @ContractState) -> ContractAddress {
+            self._problem_solving_guild_SBT.read()
+        }
+
+        fn get_research_guild_SBT(self: @ContractState) -> ContractAddress {
+            self._research_guild_SBT.read()
         }
 
 
@@ -226,35 +278,35 @@ mod Master {
         fn initialise(ref self: ContractState, dev_guild: ContractAddress, design_guild: ContractAddress, marcom_guild: ContractAddress, problem_solver_guild: ContractAddress, research_guild: ContractAddress) {
             self._only_owner();
             let is_initialised = self._initialised.read();
-            assert (is_initialised == 0, "ALREADY_INITIALISED");
+            assert (is_initialised == false, "ALREADY_INITIALISED");
 
             self._dev_guild_SBT.write(dev_guild);
             self._design_guild_SBT.write(design_guild);
             self._marcom_guild_SBT.write(marcom_guild);
             self._problem_solving_guild_SBT.write(problem_solver_guild);
             self._research_guild_SBT.write(research_guild);
-            self._initialised.write(1_u8);
+            self._initialised.write(true);
         }
 
         fn update_contibutions(ref self: ContractState, month_id: u32, contributions: Array::<MontlyContribution>) {
             self._only_owner();
             let block_timestamp = get_block_timestamp();
-            let id = self._last_update_id.read();
+            let mut id = self._last_update_id.read();
             let mut current_index = 0;
 
             // for keeping track of cummulative guild points for that month.
-            let mut dev_total_cum = 0.into();
-            let mut design_total_cum = 0.into();
-            let mut problem_solving_total_cum = 0.into();
-            let mut marcom_total_cum = 0.into();
-            let mut research_total_cum = 0.into();
+            let mut dev_total_cum = 0_u32;
+            let mut design_total_cum = 0_u32;
+            let mut problem_solving_total_cum = 0_u32;
+            let mut marcom_total_cum = 0_u32;
+            let mut research_total_cum = 0_u32;
 
             loop {
                 if (current_index == contributions.len() - 1) {
                     break true;
                 }
                 let new_contributions = *contributions[current_index];
-                let contributor:ContractAddress = new_contributions.contributor;
+                let contributor: ContractAddress = new_contributions.contributor;
                 // let points = new_contributions.points;
                 // let mut points_index = 0;
 
@@ -269,15 +321,14 @@ mod Master {
                 //     }
 
                 let old_contribution = self._contributions.read(contributor);
-                let mut list:ListTrait = ListTrait::new();
 
                 let old_dev_contribution = old_contribution.dev;
-                let contribution_data_dev = old_dev_contribution.data;
+                let mut contribution_data_dev = old_dev_contribution.data;
                 let mut cum_score_dev = old_dev_contribution.cum_score;
                 if (new_contributions.dev != 0) {
                     
-                    list.append(contribution_data_dev, month_id);
-                    list.append(contribution_data_dev, new_contributions.dev);
+                    contribution_data_dev.append(month_id);
+                    contribution_data_dev.append(new_contributions.dev);
 
                     cum_score_dev = cum_score_dev + new_contributions.dev;
 
@@ -287,14 +338,12 @@ mod Master {
 
 
                 let old_design_contribution = old_contribution.design;
-                let contribution_data_design = old_design_contribution.data;
+                let mut contribution_data_design = old_design_contribution.data;
                 let mut cum_score_design = old_design_contribution.cum_score;
                 if (new_contributions.design != 0) {
                     
-                    list.append(contribution_data_design, month_id);
-                    list.append(contribution_data_design, new_contributions.design);
-                    // contribution_data_design.append(month_id);
-                    // contribution_data_design.append(new_contributions.design);
+                    contribution_data_design.append(month_id);
+                    contribution_data_design.append(new_contributions.design);
                     
                     cum_score_design = cum_score_design + new_contributions.design;
 
@@ -304,14 +353,12 @@ mod Master {
 
 
                 let old_problem_solving_contribution = old_contribution.problem_solving;
-                let contribution_data_problem_solving = old_problem_solving_contribution.data;
+                let mut contribution_data_problem_solving = old_problem_solving_contribution.data;
                 let mut cum_score_problem_solving = old_problem_solving_contribution.cum_score;
                 if (new_contributions.problem_solving != 0) {
                     
-                    list.append(contribution_data_problem_solving, month_id);
-                    list.append(contribution_data_problem_solving, new_contributions.problem_solving);
-                    // contribution_data_problem_solving.append(month_id);
-                    // contribution_data_problem_solving.append(new_contributions.problem_solving);
+                    contribution_data_problem_solving.append(month_id);
+                    contribution_data_problem_solving.append(new_contributions.problem_solving);
 
                     cum_score_problem_solving = cum_score_problem_solving + new_contributions.problem_solving;
 
@@ -321,14 +368,12 @@ mod Master {
 
 
                 let old_marcom_contribution = old_contribution.marcom;
-                let contribution_data_marcom = old_marcom_contribution.data;
+                let mut contribution_data_marcom = old_marcom_contribution.data;
                 let mut cum_score_marcom = old_marcom_contribution.cum_score;
                 if (new_contributions.marcom != 0) {
                     
-                    list.append(contribution_data_marcom, month_id);
-                    list.append(contribution_data_marcom, new_contributions.marcom);
-                    // contribution_data_marcom.append(month_id);
-                    // contribution_data_marcom.append(new_contributions.marcom);
+                    contribution_data_marcom.append(month_id);
+                    contribution_data_marcom.append(new_contributions.marcom);
 
                     cum_score_marcom = cum_score_marcom + new_contributions.marcom;
                     marcom_total_cum = marcom_total_cum + new_contributions.marcom;                    
@@ -337,14 +382,12 @@ mod Master {
 
 
                 let old_research_contribution = old_contribution.research;
-                let contribution_data_research = old_research_contribution.data;
+                let mut contribution_data_research = old_research_contribution.data;
                 let mut cum_score_research = old_research_contribution.cum_score;
                 if (new_contributions.research != 0) {
                     
-                    list.append(contribution_data_research, month_id);
-                    list.append(contribution_data_research, new_contributions.research);
-                    // contribution_data_research.append(month_id);
-                    // contribution_data_research.append(new_contributions.research);
+                    contribution_data_research.append(month_id);
+                    contribution_data_research.append(new_contributions.research);
                     
                     cum_score_research = cum_score_research + new_contributions.research;
 
@@ -365,6 +408,7 @@ mod Master {
             };
             id += 1;
             self._last_update_id.write(id);
+            self._last_update_time.write(block_timestamp);
 
         }
 
@@ -389,7 +433,7 @@ mod Master {
             let caller = get_caller_address();
             let migration_hash: felt252 = LegacyHash::hash(caller.into(), new_address);
 
-            self._queued_migrations.write(migration_hash, 1_u8);
+            self._queued_migrations.write(migration_hash, true);
 
             self.emit(MigrationQueued { old_address: caller, new_address: new_address, hash: migration_hash});
 
@@ -400,9 +444,9 @@ mod Master {
             let migration_hash: felt252 = LegacyHash::hash(old_address.into(), new_address);
             let is_queued = self._queued_migrations.read(migration_hash);
 
-            assert(is_queued == 1, "NOT_QUEUED");
+            assert(is_queued == true, "NOT_QUEUED");
 
-            self._queued_migrations.write(migration_hash, 0_u8);
+            self._queued_migrations.write(migration_hash, false);
             InternalImpl::_migrate_points(ref self, old_address, new_address);
 
         }
@@ -428,11 +472,11 @@ mod Master {
 
             let contribution = self._contributions.read(old_address);
 
-            let zero_contribution = Contribution{dev: GuildPoints{ cum_score: 0_u32, data: ListTrait::new()},
-                                                 design: GuildPoints{ cum_score: 0_u32, data: ListTrait::new()},
-                                                 problem_solving: GuildPoints{ cum_score: 0_u32, data: ListTrait::new()},
-                                                 marcom: GuildPoints{ cum_score: 0_u32, data: ListTrait::new()},
-                                                 research: GuildPoints{ cum_score: 0_u32, data: ListTrait::new()},
+            let zero_contribution = Contribution{dev: GuildPoints{ cum_score: 0_u32, data: List::<u32>},
+                                                 design: GuildPoints{ cum_score: 0_u32, data: List::<u32>},
+                                                 problem_solving: GuildPoints{ cum_score: 0_u32, data: List::<u32>},
+                                                 marcom: GuildPoints{ cum_score: 0_u32, data: List::<u32>},
+                                                 research: GuildPoints{ cum_score: 0_u32, data: List::<u32>},
                                                  last_timestamp: 0_u64
                                                 };
 
