@@ -16,7 +16,7 @@ use alexandria_storage::list::{List, ListTrait};
 struct GuildPoints {
     // @notice the cummulative score for each contributor
     cum_score: u32,
-    // @notice Montly points for contribution for eg [Sept_2023 -> 250] will be written as [092023, 250]
+    // @notice Monthly points for contribution for eg [Sept_2023 -> 250] will be written as [092023, 250]
     // even index as month_id, immediate right is points in that month
     data: List::<u32>
 }
@@ -38,7 +38,7 @@ struct Contribution {
 }
 
 #[derive(Copy, Drop, Serde, starknet::Store)]
-struct MontlyContribution {
+struct MonthlyContribution {
     // @notice Contributor Address, used in update_contribution function
     contributor: ContractAddress,
     // @notice Contribution for dev guild
@@ -55,16 +55,16 @@ struct MontlyContribution {
 }
 
 #[derive(Copy, Drop, Serde, starknet::Store)]
-struct TotalMontlyContribution {
-    // @notice Montly contribution for dev guild
+struct TotalMonthlyContribution {
+    // @notice Monthly contribution for dev guild
     dev: u32,
-    // @notice Montly contribution for design guild
+    // @notice Monthly contribution for design guild
     design: u32,
-    // @notice Montly contribution for problem solving guild
+    // @notice Monthly contribution for problem solving guild
     problem_solving: u32,
-    // @notice Montly contribution for marcom guild
+    // @notice Monthly contribution for marcom guild
     marcom: u32,
-    // @notice Montly contribution for research guild
+    // @notice Monthly contribution for research guild
     research: u32
 }
 
@@ -102,7 +102,7 @@ trait IMaster<TContractState> {
 
 
     // external functions
-    fn update_contibutions(ref self: TContractState,  month_id: u32, contributions: Array::<MontlyContribution>);
+    fn update_contibutions(ref self: TContractState,  month_id: u32, contributions: Array::<MonthlyContribution>);
     fn initialise(ref self: TContractState, dev_guild: ContractAddress, design_guild: ContractAddress, marcom_guild: ContractAddress, problem_solver_guild: ContractAddress, research_guild: ContractAddress);
     fn migrate_points_initiated_by_DAO(ref self: TContractState, old_addresses: Array::<ContractAddress>, new_addresses: Array::<ContractAddress>);
     fn migrate_points_initiated_by_holder(ref self: TContractState, new_address: ContractAddress);
@@ -128,7 +128,7 @@ mod Master {
     use integer::{u128_try_from_felt252, u256_sqrt, u256_from_felt252};
     use starknet::syscalls::{replace_class_syscall, call_contract_syscall};
     use alexandria_storage::list::{List, ListTrait};
-    use super::{GuildPoints, Contribution, MontlyContribution, TotalMontlyContribution};
+    use super::{GuildPoints, Contribution, MonthlyContribution, TotalMonthlyContribution};
     use super::{
         IGuildDispatcher, IGuildDispatcherTrait
     };
@@ -140,7 +140,7 @@ mod Master {
     #[storage]
     struct Storage {
         _contributions:  LegacyMap::<ContractAddress, Contribution>, // @dev contributions
-        _total_contribution: LegacyMap::<u32, TotalMontlyContribution>, // @dev total contribution month wise [month_id => points]
+        _total_contribution: LegacyMap::<u32, TotalMonthlyContribution>, // @dev total contribution month wise [month_id => points]
         _last_update_id: u32, // @dev contribution update id
         _last_update_time: u64, // @dev timestamp for last update
         _dev_guild_SBT: ContractAddress, // @dev contract address for dev guild SBTs
@@ -168,7 +168,7 @@ mod Master {
         update_id: u32, 
         contributor: ContractAddress,
         month_id: u32,
-        points_earned: MontlyContribution
+        points_earned: MonthlyContribution
     }
 
     // @notice An event emitted whenever migration is queued
@@ -288,7 +288,7 @@ mod Master {
             self._initialised.write(true);
         }
 
-        fn update_contibutions(ref self: ContractState, month_id: u32, contributions: Array::<MontlyContribution>) {
+        fn update_contibutions(ref self: ContractState, month_id: u32, contributions: Array::<MonthlyContribution>) {
             self._only_owner();
             let block_timestamp = get_block_timestamp();
             let mut id = self._last_update_id.read();
@@ -399,7 +399,7 @@ mod Master {
                 let updated_contribution = Contribution{dev: new_dev_contribution, design: new_design_contribution, problem_solving: new_problem_solving_contribution, marcom: new_marcom_contribution, research: new_research_contribution, last_timestamp: block_timestamp};
                 self._contributions.write(contributor, updated_contribution);
 
-                let total_monthy_contribution = TotalMontlyContribution{dev: dev_total_cum, design: design_total_cum, problem_solving: problem_solving_total_cum, marcom: marcom_total_cum, research: research_total_cum};
+                let total_monthy_contribution = TotalMonthlyContribution{dev: dev_total_cum, design: design_total_cum, problem_solving: problem_solving_total_cum, marcom: marcom_total_cum, research: research_total_cum};
                 self._total_contribution.write(month_id, total_monthy_contribution);
                 current_index += 1;
                 // }
