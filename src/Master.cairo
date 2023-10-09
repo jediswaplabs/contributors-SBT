@@ -8,7 +8,7 @@ use zeroable::Zeroable;
 use array::{Array, ArrayTrait, SpanTrait};
 use serde::Serde;
 use traits::{Into, TryInto};
-use alexandria_storage::list::{List, ListTrait};
+use contributor_SBT2_0::array::StoreU32Array;
 
 
 
@@ -18,7 +18,7 @@ struct GuildPoints {
     cum_score: u32,
     // @notice Monthly points for contribution for eg [Sept_2023 -> 250] will be written as [092023, 250]
     // even index as month_id, immediate right is points in that month
-    data: List::<u32>
+    data: Array<u32>
 }
 
 #[derive(Drop, Serde, starknet::Store)]
@@ -127,7 +127,9 @@ mod Master {
     use starknet::{ContractAddress, ClassHash, SyscallResult, SyscallResultTrait, get_caller_address, get_contract_address, get_block_timestamp, contract_address_const};
     use integer::{u128_try_from_felt252, u256_sqrt, u256_from_felt252};
     use starknet::syscalls::{replace_class_syscall, call_contract_syscall};
-    use alexandria_storage::list::{List, ListTrait};
+    // use alexandria_storage::list::{List, ListTrait};
+    use contributor_SBT2_0::array::StoreU32Array;
+
     use super::{GuildPoints, Contribution, MonthlyContribution, TotalMonthlyContribution};
     use super::{
         IGuildDispatcher, IGuildDispatcherTrait
@@ -211,27 +213,27 @@ mod Master {
             self._contributions.read(contributor)
         }
 
-        fn get_dev_points(self: @ContractState, contributor: ContractAddress) -> GuildPoints {
+        fn get_dev_points(self: @ContractState, contributor: ContractAddress) -> u32 {
             let contribution = self._contributions.read(contributor);
             contribution.dev.cum_score
         }
 
-        fn get_design_points(self: @ContractState, contributor: ContractAddress) -> GuildPoints {
+        fn get_design_points(self: @ContractState, contributor: ContractAddress) -> u32 {
             let contribution = self._contributions.read(contributor);
             contribution.design.cum_score
         }
 
-        fn get_problem_solving_points(self: @ContractState, contributor: ContractAddress) -> GuildPoints {
+        fn get_problem_solving_points(self: @ContractState, contributor: ContractAddress) -> u32 {
             let contribution = self._contributions.read(contributor);
             contribution.problem_solving.cum_score
         }
 
-        fn get_marcom_points(self: @ContractState, contributor: ContractAddress) -> GuildPoints {
+        fn get_marcom_points(self: @ContractState, contributor: ContractAddress) -> u32 {
             let contribution = self._contributions.read(contributor);
             contribution.marcom.cum_score
         }
 
-        fn get_research_points(self: @ContractState, contributor: ContractAddress) -> GuildPoints {
+        fn get_research_points(self: @ContractState, contributor: ContractAddress) -> u32 {
             let contribution = self._contributions.read(contributor);
             contribution.research.cum_score
         }
@@ -470,11 +472,11 @@ mod Master {
 
             let contribution = self._contributions.read(old_address);
             /// @notice data needs to be empty list, TODO:: figure out how to create that.
-            let zero_contribution = Contribution{dev: GuildPoints{ cum_score: 0_u32, data: List::<u32>},
-                                                 design: GuildPoints{ cum_score: 0_u32, data: List::<u32>},
-                                                 problem_solving: GuildPoints{ cum_score: 0_u32, data: List::<u32>},
-                                                 marcom: GuildPoints{ cum_score: 0_u32, data: List::<u32>},
-                                                 research: GuildPoints{ cum_score: 0_u32, data: List::<u32>},
+            let zero_contribution = Contribution{dev: GuildPoints{ cum_score: 0_u32, data: ArrayTrait::new()},
+                                                 design: GuildPoints{ cum_score: 0_u32, data: ArrayTrait::new()},
+                                                 problem_solving: GuildPoints{ cum_score: 0_u32, data: ArrayTrait::new()},
+                                                 marcom: GuildPoints{ cum_score: 0_u32, data:ArrayTrait::new()},
+                                                 research: GuildPoints{ cum_score: 0_u32, data: ArrayTrait::new()},
                                                  last_timestamp: 0_u64
                                                 };
 
