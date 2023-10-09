@@ -86,11 +86,11 @@ trait IGuild<T> {
 trait IMaster<TContractState> {
     // view functions
     fn get_contibutions_points(self: @TContractState, contributor: ContractAddress) -> Contribution;
-    fn get_dev_points(self: @TContractState, contributor: ContractAddress) -> GuildPoints;
-    fn get_design_points(self: @TContractState, contributor: ContractAddress) -> GuildPoints;
-    fn get_problem_solving_points(self: @TContractState, contributor: ContractAddress) -> GuildPoints;
-    fn get_marcom_points(self: @TContractState, contributor: ContractAddress) -> GuildPoints;
-    fn get_research_points(self: @TContractState, contributor: ContractAddress) -> GuildPoints;
+    fn get_dev_points(self: @TContractState, contributor: ContractAddress) -> u32;
+    fn get_design_points(self: @TContractState, contributor: ContractAddress) -> u32;
+    fn get_problem_solving_points(self: @TContractState, contributor: ContractAddress) -> u32;
+    fn get_marcom_points(self: @TContractState, contributor: ContractAddress) -> u32;
+    fn get_research_points(self: @TContractState, contributor: ContractAddress) -> u32;
     fn get_last_update_id(self: @TContractState) -> u32;
     fn get_last_update_time(self: @TContractState) -> u64;
     fn get_migartion_queued_state(self: @TContractState, hash: felt252 ) -> bool;
@@ -135,7 +135,7 @@ mod Master {
 
 
     //
-    // Storage Pair
+    // Storage Master
     //
     #[storage]
     struct Storage {
@@ -158,8 +158,6 @@ mod Master {
         ContributionUpdated: ContributionUpdated,
         MigrationQueued: MigrationQueued,
         Migrated: Migrated,
-        // Swap: Swap,
-        // Sync: Sync
     }
 
     // @notice An event emitted whenever contribution is updated
@@ -215,27 +213,27 @@ mod Master {
 
         fn get_dev_points(self: @ContractState, contributor: ContractAddress) -> GuildPoints {
             let contribution = self._contributions.read(contributor);
-            contribution.dev
+            contribution.dev.cum_score
         }
 
         fn get_design_points(self: @ContractState, contributor: ContractAddress) -> GuildPoints {
             let contribution = self._contributions.read(contributor);
-            contribution.design
+            contribution.design.cum_score
         }
 
         fn get_problem_solving_points(self: @ContractState, contributor: ContractAddress) -> GuildPoints {
             let contribution = self._contributions.read(contributor);
-            contribution.problem_solving
+            contribution.problem_solving.cum_score
         }
 
         fn get_marcom_points(self: @ContractState, contributor: ContractAddress) -> GuildPoints {
             let contribution = self._contributions.read(contributor);
-            contribution.marcom
+            contribution.marcom.cum_score
         }
 
         fn get_research_points(self: @ContractState, contributor: ContractAddress) -> GuildPoints {
             let contribution = self._contributions.read(contributor);
-            contribution.research
+            contribution.research.cum_score
         }
 
         fn get_last_update_id(self: @ContractState) -> u32 {
@@ -471,7 +469,7 @@ mod Master {
             let research_guild = self._research_guild_SBT.read();
 
             let contribution = self._contributions.read(old_address);
-
+            /// @notice data needs to be empty list, TODO:: figure out how to create that.
             let zero_contribution = Contribution{dev: GuildPoints{ cum_score: 0_u32, data: List::<u32>},
                                                  design: GuildPoints{ cum_score: 0_u32, data: List::<u32>},
                                                  problem_solving: GuildPoints{ cum_score: 0_u32, data: List::<u32>},
