@@ -27,6 +27,7 @@ trait IGuildSBT<TContractState> {
     fn get_contribution_levels(self: @TContractState) -> Array<u32>;
     fn get_number_of_levels(self: @TContractState) -> u32;
     fn baseURI(self: @TContractState) -> Span<felt252>;
+    fn wallet_of_owner(self: @TContractState, account: ContractAddress) -> u256;
 
     // external functions
     fn update_baseURI(ref self: TContractState, new_baseURI: Span<felt252>);
@@ -161,6 +162,11 @@ mod GuildSBT {
         fn baseURI(self: @ContractState) -> Span<felt252> {
             self._baseURI.read()
         }
+
+        fn wallet_of_owner(self: @ContractState, account: ContractAddress) -> u256 {
+            self._wallet_of_owner.read(account)
+        }
+
 
         //
         // Setters
