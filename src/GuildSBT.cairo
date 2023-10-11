@@ -294,6 +294,154 @@ mod GuildSBT {
     }
     
 
+    //
+    // ERC721 ABI impl
+    //
+
+    #[external(v0)]
+    impl IERC721Impl of IERC721<ContractState> {
+        fn balance_of(self: @ContractState, account: ContractAddress) -> u256 {
+            let erc721_self = ERC721::unsafe_new_contract_state();
+
+            erc721_self.balance_of(:account)
+        }
+
+        fn owner_of(self: @ContractState, token_id: u256) -> ContractAddress {
+            let erc721_self = ERC721::unsafe_new_contract_state();
+
+            erc721_self.owner_of(:token_id)
+        }
+
+        fn get_approved(self: @ContractState, token_id: u256) -> ContractAddress {
+            let erc721_self = ERC721::unsafe_new_contract_state();
+
+            erc721_self.get_approved(:token_id)
+        }
+
+        fn is_approved_for_all(
+            self: @ContractState, owner: ContractAddress, operator: ContractAddress
+        ) -> bool {
+            let erc721_self = ERC721::unsafe_new_contract_state();
+
+            erc721_self.is_approved_for_all(:owner, :operator)
+        }
+
+        fn approve(ref self: ContractState, to: ContractAddress, token_id: u256) {
+            let mut erc721_self = ERC721::unsafe_new_contract_state();
+
+            erc721_self.approve(:to, :token_id);
+        }
+
+        fn transfer_from(
+            ref self: ContractState, from: ContractAddress, to: ContractAddress, token_id: u256
+        ) {
+            let mut erc721_self = ERC721::unsafe_new_contract_state();
+
+            erc721_self.transfer_from(:from, :to, :token_id);
+        }
+
+        fn safe_transfer_from(
+            ref self: ContractState,
+            from: ContractAddress,
+            to: ContractAddress,
+            token_id: u256,
+            data: Span<felt252>
+        ) {
+            let mut erc721_self = ERC721::unsafe_new_contract_state();
+
+            erc721_self.safe_transfer_from(:from, :to, :token_id, :data);
+        }
+
+        fn set_approval_for_all(
+            ref self: ContractState, operator: ContractAddress, approved: bool
+        ) {
+            let mut erc721_self = ERC721::unsafe_new_contract_state();
+
+            erc721_self.set_approval_for_all(:operator, :approved);
+        }
+    }
+
+    #[external(v0)]
+    impl ISRC5Impl of ISRC5<ContractState> {
+        fn supports_interface(self: @ContractState, interface_id: felt252) -> bool {
+            if ((interface_id == IERC721_ID_LEGACY)
+                | (interface_id == IERC721_METADATA_ID_LEGACY)) {
+                true
+            } else {
+                let mut erc721_self = ERC721::unsafe_new_contract_state();
+                erc721_self.supports_interface(:interface_id)
+            }
+        }
+    }
+
+    #[external(v0)]
+    impl ISRC5CamelImpl of ISRC5Camel<ContractState> {
+        fn supportsInterface(self: @ContractState, interfaceId: felt252) -> bool {
+            self.supports_interface(interface_id: interfaceId)
+        }
+    }
+
+    #[external(v0)]
+    impl IERC721MetadataImpl of IERC721Metadata<ContractState> {
+        fn name(self: @ContractState) -> felt252 {
+            let erc721_self = ERC721::unsafe_new_contract_state();
+
+            erc721_self.name()
+        }
+
+        fn symbol(self: @ContractState) -> felt252 {
+            let erc721_self = ERC721::unsafe_new_contract_state();
+
+            erc721_self.symbol()
+        }
+
+        fn token_uri(self: @ContractState, token_id: u256) -> felt252 {
+            let erc721_self = ERC721::unsafe_new_contract_state();
+
+            erc721_self.token_uri(:token_id)
+        }
+    }
+
+    #[external(v0)]
+    impl JediERC721CamelImpl of IERC721CamelOnly<ContractState> {
+        fn balanceOf(self: @ContractState, account: ContractAddress) -> u256 {
+            IERC721::balance_of(self, account: account)
+        }
+
+        fn ownerOf(self: @ContractState, tokenId: u256) -> ContractAddress {
+            IERC721::owner_of(self, token_id: tokenId)
+        }
+
+        fn getApproved(self: @ContractState, tokenId: u256) -> ContractAddress {
+            IERC721::get_approved(self, token_id: tokenId)
+        }
+
+        fn isApprovedForAll(
+            self: @ContractState, owner: ContractAddress, operator: ContractAddress
+        ) -> bool {
+            IERC721::is_approved_for_all(self, owner: owner, operator: operator)
+        }
+
+        fn transferFrom(
+            ref self: ContractState, from: ContractAddress, to: ContractAddress, tokenId: u256
+        ) {
+            IERC721::transfer_from(ref self, :from, :to, token_id: tokenId);
+        }
+
+        fn safeTransferFrom(
+            ref self: ContractState,
+            from: ContractAddress,
+            to: ContractAddress,
+            tokenId: u256,
+            data: Span<felt252>
+        ) {
+            IERC721::safe_transfer_from(ref self, :from, :to, token_id: tokenId, :data);
+        }
+
+        fn setApprovalForAll(ref self: ContractState, operator: ContractAddress, approved: bool) {
+            IERC721::set_approval_for_all(ref self, :operator, :approved);
+        }
+    }
 
 
     #[generate_trait]
