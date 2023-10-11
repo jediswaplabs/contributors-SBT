@@ -278,7 +278,7 @@ mod Master {
         fn initialise(ref self: ContractState, dev_guild: ContractAddress, design_guild: ContractAddress, marcom_guild: ContractAddress, problem_solver_guild: ContractAddress, research_guild: ContractAddress) {
             self._only_owner();
             let is_initialised = self._initialised.read();
-            assert (is_initialised == false, "ALREADY_INITIALISED");
+            assert (is_initialised == false, 'ALREADY_INITIALISED');
 
             self._dev_guild_SBT.write(dev_guild);
             self._design_guild_SBT.write(design_guild);
@@ -415,7 +415,7 @@ mod Master {
 
         fn migrate_points_initiated_by_DAO(ref self: ContractState, old_addresses: Array::<ContractAddress>, new_addresses: Array::<ContractAddress> ) {
             self._only_owner();
-            assert(old_addresses.len() == new_addresses.len(), "INVALID_INPUTS");
+            assert(old_addresses.len() == new_addresses.len(), 'INVALID_INPUTS');
             let mut current_index = 0;
 
             loop {
@@ -444,11 +444,11 @@ mod Master {
             let migration_hash: felt252 = LegacyHash::hash(old_address.into(), new_address);
             let is_queued = self._queued_migrations.read(migration_hash);
 
-            assert(is_queued == true, "NOT_QUEUED");
+            assert(is_queued == true, 'NOT_QUEUED');
 
             self._queued_migrations.write(migration_hash, false);
             InternalImpl::_migrate_points(ref self, old_address, new_address);
-
+            // self._last_update_id.write(0);
         }
 
 

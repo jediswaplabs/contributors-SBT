@@ -186,7 +186,7 @@ mod GuildSBT {
             let mut erc721_self = ERC721::unsafe_new_contract_state();
 
             let balance = erc721_self.balance_of(:account);
-            assert (balance == 0, "ALREADY_MINTED");
+            assert (balance == 0, 'ALREADY_MINTED');
 
             self._token_type.write(account, token_type);
             let master = self._master.read();
@@ -194,7 +194,7 @@ mod GuildSBT {
             let points = masterDispatcher.get_dev_points(account);
             let tier = InternalImpl::_get_contribution_tier(@self, points);
 
-            assert (tier != 0, "NOT_ENOUGH_POINTS");
+            assert (tier != 0, 'NOT_ENOUGH_POINTS');
             let token_id = self._next_token_id.read();
             erc721_self._mint(to: account, token_id: token_id.into());
             self._wallet_of_owner.write(account, token_id);
@@ -212,7 +212,7 @@ mod GuildSBT {
             }
 
             let new_address_balance = erc721_self.balance_of(account: new_address);
-            assert (new_address_balance == 0, "SBT_ALREADY_FOUND");
+            assert (new_address_balance == 0, 'SBT_ALREADY_FOUND');
 
             let token_id = self._wallet_of_owner.read(old_address);
             let token_type = self._token_type.read(old_address);
@@ -308,7 +308,7 @@ mod GuildSBT {
             let master = self._master.read();
             let caller = get_caller_address();
             assert(!caller.is_zero(), 'CALLER_IS_ZERO_ADDRESS');
-            assert (caller == master, "UNAUTHORISED")
+            assert (caller == master, 'UNAUTHORISED')
         }
     }
 
