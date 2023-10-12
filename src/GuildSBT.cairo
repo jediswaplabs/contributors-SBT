@@ -4,7 +4,6 @@
 // @notice SBT contract to give out to contributor
 
 use starknet::ContractAddress;
-use zeroable::Zeroable;
 use array::{Array, ArrayTrait, SpanTrait};
 use serde::Serde;
 use traits::{Into, TryInto};
@@ -114,6 +113,7 @@ mod GuildSBT {
             let owner = erc721_self.owner_of(:token_id);
             let master = self._master.read();
             let masterDispatcher = IMasterDispatcher { contract_address: master };
+            // @notice this is a sample SBT contract for dev guild, update the next line before deploying other guild
             let points = masterDispatcher.get_dev_points(owner);
             let token_type = self._token_type.read(owner);
 
@@ -128,6 +128,7 @@ mod GuildSBT {
         fn tokenURI_from_contributor(self: @ContractState, contributor: ContractAddress) -> Span<felt252> {
             let master = self._master.read();
             let masterDispatcher = IMasterDispatcher { contract_address: master };
+            // @notice this is a sample SBT contract for dev guild, update the next line before deploying other guild
             let points = masterDispatcher.get_dev_points(contributor);
             let token_type = self._token_type.read(contributor);
 
