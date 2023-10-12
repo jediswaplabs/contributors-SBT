@@ -3,6 +3,11 @@
 // @license MIT
 // @notice Master to store contribution points
 
+// ************************************
+// @notice this approach is abandoned because issue with storing of array
+// Can refer it in future (if possible to implement)
+// ************************************
+
 use starknet::ContractAddress;
 use zeroable::Zeroable;
 use array::{Array, ArrayTrait, SpanTrait};
