@@ -312,7 +312,7 @@ mod Master {
             let mut research_total_cum = 0_u32;
 
             loop {
-                if (current_index == contributions.len() - 1) {
+                if (current_index == contributions.len()) {
                     break true;
                 }
                 let new_contributions: MonthlyContribution = *contributions[current_index];
@@ -401,7 +401,7 @@ mod Master {
             let mut current_index = 0;
 
             loop {
-                if (current_index == old_addresses.len() - 1) {
+                if (current_index == old_addresses.len()) {
                     break true;
                 }
                 InternalImpl::_migrate_points(ref self, *old_addresses[current_index], *new_addresses[current_index]);
@@ -412,6 +412,7 @@ mod Master {
 
 
         fn migrate_points_initiated_by_holder(ref self: ContractState, new_address: ContractAddress) {
+            // TODO: if new address already have any contribution points, if yes return. 
             let caller = get_caller_address();
             let migration_hash: felt252 = LegacyHash::hash(caller.into(), new_address);
 
