@@ -342,9 +342,10 @@ mod GuildSBT {
         fn transfer_from(
             ref self: ContractState, from: ContractAddress, to: ContractAddress, token_id: u256
         ) {
-            let mut erc721_self = ERC721::unsafe_new_contract_state();
+            assert(false, 'SBT_NOT_TRANSFERABLE');
+            // let mut erc721_self = ERC721::unsafe_new_contract_state();
 
-            erc721_self.transfer_from(:from, :to, :token_id);
+            // erc721_self.transfer_from(:from, :to, :token_id);
         }
 
         fn safe_transfer_from(
@@ -354,9 +355,11 @@ mod GuildSBT {
             token_id: u256,
             data: Span<felt252>
         ) {
-            let mut erc721_self = ERC721::unsafe_new_contract_state();
+            assert(false, 'SBT_NOT_TRANSFERABLE');
 
-            erc721_self.safe_transfer_from(:from, :to, :token_id, :data);
+            // let mut erc721_self = ERC721::unsafe_new_contract_state();
+
+            // erc721_self.safe_transfer_from(:from, :to, :token_id, :data);
         }
 
         fn set_approval_for_all(
@@ -432,7 +435,9 @@ mod GuildSBT {
         fn transferFrom(
             ref self: ContractState, from: ContractAddress, to: ContractAddress, tokenId: u256
         ) {
-            IERC721::transfer_from(ref self, :from, :to, token_id: tokenId);
+            assert(false, 'SBT_NOT_TRANSFERABLE');
+
+            // IERC721::transfer_from(ref self, :from, :to, token_id: tokenId);
         }
 
         fn safeTransferFrom(
@@ -442,7 +447,9 @@ mod GuildSBT {
             tokenId: u256,
             data: Span<felt252>
         ) {
-            IERC721::safe_transfer_from(ref self, :from, :to, token_id: tokenId, :data);
+            assert(false, 'SBT_NOT_TRANSFERABLE');
+
+            // IERC721::safe_transfer_from(ref self, :from, :to, token_id: tokenId, :data);
         }
 
         fn setApprovalForAll(ref self: ContractState, operator: ContractAddress, approved: bool) {
