@@ -25,3 +25,13 @@ fn user3() -> ContractAddress {
 fn user4() -> ContractAddress {
     contract_address_try_from_felt252('user4').unwrap()
 }
+
+fn URI() -> Span<felt252> {
+    let mut uri = ArrayTrait::new();
+
+    uri.append('api.jediswap/');
+    uri.append('guildSBT/');
+    uri.append('dev/');
+
+    uri.span()
+}

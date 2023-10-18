@@ -6,7 +6,7 @@ use traits::TryInto;
 use option::OptionTrait;
 use snforge_std::{ declare, ContractClassTrait, ContractClass, start_warp, start_prank, stop_prank,
                    spy_events, SpyOn, EventSpy, EventFetcher, Event, EventAssertions };
-use tests::utils::{ deployer_addr, user1, user2, user3, user4};
+use tests::utils::{ deployer_addr, user1, user2, user3, user4, URI};
 use contributor_SBT2_0::Master::MonthlyContribution;
 use contributor_SBT2_0::Master::Contribution;
 
@@ -14,7 +14,7 @@ use contributor_SBT2_0::Master::Contribution;
 trait IMaster<TContractState> {
     fn get_last_update_id(self: @TContractState) -> u32;
     fn get_dev_points(self: @TContractState, contributor: ContractAddress) -> u32;
-    fn get_contibutions_points(self: @TContractState, contributor: ContractAddress) -> Contribution;
+    fn get_contributions_points(self: @TContractState, contributor: ContractAddress) -> Contribution;
 
     fn update_contibutions(ref self: TContractState,  month_id: u32, contributions: Array::<MonthlyContribution>);
     fn migrate_points_initiated_by_DAO(ref self: TContractState, old_addresses: Array::<ContractAddress>, new_addresses: Array::<ContractAddress> );
@@ -36,15 +36,7 @@ trait IGuildSBT<TContractState> {
 }
 
 
-fn URI() -> Span<felt252> {
-    let mut uri = ArrayTrait::new();
 
-    uri.append('api.jediswap/');
-    uri.append('guildSBT/');
-    uri.append('dev/');
-
-    uri.span()
-}
 
 fn deploy_contracts_and_initialise() -> (ContractAddress, ContractAddress, ContractAddress, ContractAddress, ContractAddress, ContractAddress) {
     let mut master_constructor_calldata = Default::default();
@@ -83,10 +75,9 @@ fn deploy_contracts_and_initialise() -> (ContractAddress, ContractAddress, Contr
     master_dispatcher.initialise(dev_guildSBT_address, design_guildSBT_address, marcom_guildSBT_address, problem_solving_guildSBT_address, research_guildSBT_address);
     stop_prank(master_address);
 
-    
-
     (master_address, dev_guildSBT_address, design_guildSBT_address, marcom_guildSBT_address, problem_solving_guildSBT_address, research_guildSBT_address)
 }
+
 
 fn update_contribution_and_minting_sbt(master_address: ContractAddress, dev_guildSBT_address: ContractAddress, design_guildSBT_address: ContractAddress, marcom_guildSBT_address: ContractAddress, problem_solving_guildSBT_address: ContractAddress, research_guildSBT_address: ContractAddress) -> (MonthlyContribution, MonthlyContribution) {
     let master_dispatcher = IMasterDispatcher { contract_address: master_address };
@@ -171,14 +162,14 @@ fn test_migrate_points_initiated_by_DAO() {
 
 
     // verifying points are successfully migrated
-    let user3_contribution: Contribution = master_dispatcher.get_contibutions_points(user3());
+    let user3_contribution: Contribution = master_dispatcher.get_contributions_points(user3());
     assert(user3_contribution.dev == user1_contribution.dev, '');
     assert(user3_contribution.design == user1_contribution.design, '');
     assert(user3_contribution.marcom == user1_contribution.marcom, '');
     assert(user3_contribution.problem_solving == user1_contribution.problem_solving, '');
     assert(user3_contribution.research == user1_contribution.research, '');
 
-    let user4_contribution: Contribution = master_dispatcher.get_contibutions_points(user4());
+    let user4_contribution: Contribution = master_dispatcher.get_contributions_points(user4());
     assert(user4_contribution.dev == user2_contribution.dev, '');
     assert(user4_contribution.design == user2_contribution.design, '');
     assert(user4_contribution.marcom == user2_contribution.marcom, '');
@@ -187,14 +178,14 @@ fn test_migrate_points_initiated_by_DAO() {
 
 
     // verfying points of old addresses is resetted to zero
-    let user1_contribution_updated: Contribution = master_dispatcher.get_contibutions_points(user1());
+    let user1_contribution_updated: Contribution = master_dispatcher.get_contributions_points(user1());
     assert(user1_contribution_updated.dev == 0, '');
     assert(user1_contribution_updated.design == 0, '');
     assert(user1_contribution_updated.marcom == 0, '');
     assert(user1_contribution_updated.problem_solving == 0, '');
     assert(user1_contribution_updated.research == 0, '');
 
-    let user2_contribution_updated: Contribution = master_dispatcher.get_contibutions_points(user2());
+    let user2_contribution_updated: Contribution = master_dispatcher.get_contributions_points(user2());
     assert(user2_contribution_updated.dev == 0, '');
     assert(user2_contribution_updated.design == 0, '');
     assert(user2_contribution_updated.marcom == 0, '');
@@ -235,6 +226,66 @@ fn test_migrate_points_initiated_by_DAO() {
 }
 
 #[test]
+#[should_panic(expected: ('Caller is not the owner', ))]
+fn test_migrate_points_initiated_by_DAO_not_owner() { 
+    let (master_address, dev_guildSBT_address, design_guildSBT_address, marcom_guildSBT_address, problem_solving_guildSBT_address, research_guildSBT_address) = deploy_contracts_and_initialise();
+    let (user1_contribution, user2_contribution) = update_contribution_and_minting_sbt(master_address, dev_guildSBT_address, design_guildSBT_address, marcom_guildSBT_address, problem_solving_guildSBT_address, research_guildSBT_address);
+
+    let master_dispatcher = IMasterDispatcher { contract_address: master_address };
+    
+    // migrating user1 -> user3 and user2 -> user4
+    let mut old_addresses = ArrayTrait::new();
+    old_addresses.append(user1());
+    old_addresses.append(user2());
+
+    let mut new_addresses = ArrayTrait::new();
+    new_addresses.append(user3());
+    new_addresses.append(user4());
+
+    let mut spy = spy_events(SpyOn::One(master_address));
+
+    start_prank(master_address, user1());
+    master_dispatcher.migrate_points_initiated_by_DAO(old_addresses, new_addresses);
+    stop_prank(master_address);
+
+    let mut event_data_1 = Default::default();
+    Serde::serialize(@user1(), ref event_data_1);
+    Serde::serialize(@user3(), ref event_data_1);
+    spy.assert_emitted(@array![
+        Event { from: master_address, name: 'Migrated', keys: array![], data: event_data_1 }
+    ]);
+
+    let mut event_data_2 = Default::default();
+    Serde::serialize(@user2(), ref event_data_2);
+    Serde::serialize(@user4(), ref event_data_2);
+    spy.assert_emitted(@array![
+        Event { from: master_address, name: 'Migrated', keys: array![], data: event_data_2 }
+    ]);
+
+}
+
+#[test]
+#[should_panic(expected: ('INVALID_INPUTS', ))]
+fn test_migrate_points_initiated_by_DAO_length_mismatch() { 
+    let (master_address, dev_guildSBT_address, design_guildSBT_address, marcom_guildSBT_address, problem_solving_guildSBT_address, research_guildSBT_address) = deploy_contracts_and_initialise();
+    let (user1_contribution, user2_contribution) = update_contribution_and_minting_sbt(master_address, dev_guildSBT_address, design_guildSBT_address, marcom_guildSBT_address, problem_solving_guildSBT_address, research_guildSBT_address);
+
+    let master_dispatcher = IMasterDispatcher { contract_address: master_address };
+    
+    // migrating user1 -> user3 and user2 -> X (length mismatch)
+    let mut old_addresses = ArrayTrait::new();
+    old_addresses.append(user1());
+    old_addresses.append(user2());
+
+    let mut new_addresses = ArrayTrait::new();
+    new_addresses.append(user3());
+
+    start_prank(master_address, deployer_addr());
+    master_dispatcher.migrate_points_initiated_by_DAO(old_addresses, new_addresses);
+    stop_prank(master_address);
+}
+
+#[test]
 fn test_migrate_points_initiated_by_holder() { 
     let (master_address, dev_guildSBT_address, design_guildSBT_address, marcom_guildSBT_address, problem_solving_guildSBT_address, research_guildSBT_address) = deploy_contracts_and_initialise();
     let (user1_contribution, user2_contribution) = update_contribution_and_minting_sbt(master_address, dev_guildSBT_address, design_guildSBT_address, marcom_guildSBT_address, problem_solving_guildSBT_address, research_guildSBT_address);
@@ -248,19 +299,34 @@ fn test_migrate_points_initiated_by_holder() {
     let user_1_dev_token_id = dev_guildSBT_dispatcher.wallet_of_owner(user1());
     let user_1_design_token_id = design_guildSBT_dispatcher.wallet_of_owner(user1());
     
+    let mut spy = spy_events(SpyOn::One(master_address));
+
     // initiating migration request
     start_prank(master_address, user1());
     master_dispatcher.migrate_points_initiated_by_holder(user3());
     stop_prank(master_address);
+
+    let mut event_data_1 = Default::default();
+    Serde::serialize(@user1(), ref event_data_1);
+    Serde::serialize(@user3(), ref event_data_1);
+    spy.assert_emitted(@array![
+        Event { from: master_address, name: 'MigrationQueued', keys: array![], data: event_data_1 }
+    ]);
 
     // executing migration (by DAO)
     start_prank(master_address, deployer_addr());
     master_dispatcher.execute_migrate_points_initiated_by_holder(user1(), user3());
     stop_prank(master_address);
 
+    let mut event_data_2 = Default::default();
+    Serde::serialize(@user1(), ref event_data_2);
+    Serde::serialize(@user3(), ref event_data_2);
+    spy.assert_emitted(@array![
+        Event { from: master_address, name: 'Migrated', keys: array![], data: event_data_2 }
+    ]);
 
     // verifying points are successfully migrated
-    let user3_contribution: Contribution = master_dispatcher.get_contibutions_points(user3());
+    let user3_contribution: Contribution = master_dispatcher.get_contributions_points(user3());
     assert(user3_contribution.dev == user1_contribution.dev, '');
     assert(user3_contribution.design == user1_contribution.design, '');
     assert(user3_contribution.marcom == user1_contribution.marcom, '');
@@ -268,7 +334,7 @@ fn test_migrate_points_initiated_by_holder() {
     assert(user3_contribution.research == user1_contribution.research, '');
 
     // verfying points of old addresses is resetted to zero
-    let user1_contribution_updated: Contribution = master_dispatcher.get_contibutions_points(user1());
+    let user1_contribution_updated: Contribution = master_dispatcher.get_contributions_points(user1());
     assert(user1_contribution_updated.dev == 0, '');
     assert(user1_contribution_updated.design == 0, '');
     assert(user1_contribution_updated.marcom == 0, '');
@@ -295,4 +361,18 @@ fn test_migrate_points_initiated_by_holder() {
     assert(user_3_design_token_id == user_1_design_token_id, '');
 
     
+}
+
+#[should_panic(expected: ('NOT_QUEUED', ))]
+#[test]
+fn test_execute_migrate_points_without_initiating() { 
+    let (master_address, dev_guildSBT_address, design_guildSBT_address, marcom_guildSBT_address, problem_solving_guildSBT_address, research_guildSBT_address) = deploy_contracts_and_initialise();
+    let (user1_contribution, user2_contribution) = update_contribution_and_minting_sbt(master_address, dev_guildSBT_address, design_guildSBT_address, marcom_guildSBT_address, problem_solving_guildSBT_address, research_guildSBT_address);
+
+    let master_dispatcher = IMasterDispatcher { contract_address: master_address };
+
+    // executing migration (by DAO) without initiated by holder.
+    start_prank(master_address, deployer_addr());
+    master_dispatcher.execute_migrate_points_initiated_by_holder(user1(), user3());
+    stop_prank(master_address);
 }

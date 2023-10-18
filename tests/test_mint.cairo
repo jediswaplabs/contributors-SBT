@@ -6,7 +6,7 @@ use traits::TryInto;
 use option::OptionTrait;
 use snforge_std::{ declare, ContractClassTrait, ContractClass, start_warp, start_prank, stop_prank,
                    spy_events, SpyOn, EventSpy, EventFetcher, Event, EventAssertions };
-use tests::utils::{ deployer_addr, user1, user2};
+use tests::utils::{ deployer_addr, user1, user2, URI};
 use contributor_SBT2_0::Master::MonthlyContribution;
 
 #[starknet::interface]
@@ -24,20 +24,12 @@ trait IGuildSBT<TContractState> {
     fn wallet_of_owner(self: @TContractState, account: ContractAddress) -> u256;
     fn get_contribution_tier(self: @TContractState, contributor: ContractAddress) -> u32;
     fn tokenURI(self: @TContractState, token_id: u256) -> Span<felt252>;
+    fn get_next_token_id(self: @TContractState) -> u256;
+
 
     fn safe_mint(ref self: TContractState, token_type: u8);
 }
 
-
-fn URI() -> Span<felt252> {
-    let mut uri = ArrayTrait::new();
-
-    uri.append('api.jediswap/');
-    uri.append('guildSBT/');
-    uri.append('dev/');
-
-    uri.span()
-}
 
 fn deploy_contracts() -> (ContractAddress, ContractAddress) {
     let mut master_constructor_calldata = Default::default();
@@ -99,6 +91,8 @@ fn test_mint() {
     master_dispatcher.update_contibutions(092023, contributions);
     stop_prank(master_address);
 
+    let expected_token_id = guildSBT_dispatcher.get_next_token_id();
+
     start_prank(guildSBT_address, user1());
     guildSBT_dispatcher.safe_mint(1);
     stop_prank(guildSBT_address);
@@ -107,22 +101,33 @@ fn test_mint() {
     assert(new_balance == 1, 'invalid balance');
 
     let user1_token_id = guildSBT_dispatcher.wallet_of_owner(user1());
+    assert(user1_token_id == expected_token_id, 'Incorrect token id');
 
     let tokenURI = guildSBT_dispatcher.tokenURI(user1_token_id);
-    // TODO: comapre span to string
-    // assert(tokenURI == 'api.jediswap/guildSBT/dev/21', 'invalid uri');
+    assert(*tokenURI[0] == 'api.jediswap/', 'Invlalid item 0');
+    assert(*tokenURI[1] == 'guildSBT/', 'Invlalid item 1');
+    assert(*tokenURI[2] == 'dev/', 'Invlalid item 2');
+    assert(*tokenURI[3] == '2', 'Invlalid tier (item 3)');
+    assert(*tokenURI[4] == '1', 'Invlalid type (item 4)');
+    assert(*tokenURI[5] == '.json', 'Invlalid item 5');
+    assert(tokenURI.len() == 6, 'should be 6');
+
+    //verifying token id is updated
+    let updated_token_id = guildSBT_dispatcher.get_next_token_id();
+    assert(updated_token_id == expected_token_id + 1, 'token id not updated');
 
 }
 
 #[test]
-#[should_panic(expected: ('ALREADY_MINTED', ))]
+// #[should_panic(expected: ('ALREADY_MINTED', ))]
 fn test_mint_second_sbt() { 
     let (master_address, guildSBT_address) = deploy_contracts();
     let master_dispatcher = IMasterDispatcher { contract_address: master_address };
     let guildSBT_dispatcher = IGuildSBTDispatcher { contract_address: guildSBT_address };
+    let safe_guildSBT_dispatcher = IGuildSBTSafeDispatcher { contract_address: guildSBT_address };
 
     let balance = guildSBT_dispatcher.balance_of(user1());
-    assert(balance == 0, 'invlaid initialisation');
+    assert(balance == 0, 'invalid initialisation');
 
     let mut contributions: Array<MonthlyContribution> = ArrayTrait::new();
     contributions.append(MonthlyContribution{ contributor: user1(), dev: 240, design: 250, marcom: 20, problem_solving: 30, research: 10});
@@ -133,14 +138,19 @@ fn test_mint_second_sbt() {
     stop_prank(master_address);
 
     start_prank(guildSBT_address, user1());
-    guildSBT_dispatcher.safe_mint(1);
+    safe_guildSBT_dispatcher.safe_mint(1);
     stop_prank(guildSBT_address);
 
     let new_balance = guildSBT_dispatcher.balance_of(user1());
     assert(new_balance == 1, 'invalid balance');
 
     start_prank(guildSBT_address, user1());
-    guildSBT_dispatcher.safe_mint(1);
+    match safe_guildSBT_dispatcher.safe_mint(1) {
+        Result::Ok(_) => panic_with_felt252('shouldve panicked'),
+        Result::Err(panic_data) => {
+            assert(*panic_data.at(0) == 'ALREADY_MINTED', *panic_data.at(0));
+        }
+    };
     stop_prank(guildSBT_address);
 
 }

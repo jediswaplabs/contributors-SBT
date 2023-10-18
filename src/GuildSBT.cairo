@@ -4,9 +4,8 @@
 // @notice SBT contract to give out to contributor
 
 use starknet::ContractAddress;
-use array::{Array, ArrayTrait, SpanTrait};
-use serde::Serde;
-use traits::{Into, TryInto};
+use array::Array;
+
 
 #[starknet::interface]
 trait IMaster<T> {
@@ -22,6 +21,7 @@ trait IGuildSBT<TContractState> {
     fn tokenURI(self: @TContractState, token_id: u256) -> Span<felt252>;
     fn tokenURI_from_contributor(self: @TContractState, contributor: ContractAddress) -> Span<felt252>;
     fn get_master(self: @TContractState) -> ContractAddress;
+    fn get_next_token_id(self: @TContractState) -> u256;
     fn get_contribution_tier(self: @TContractState, contributor: ContractAddress) -> u32;
     fn get_contribution_levels(self: @TContractState) -> Array<u32>;
     fn get_number_of_levels(self: @TContractState) -> u32;
@@ -143,6 +143,10 @@ mod GuildSBT {
             self._master.read()
         }
 
+        fn get_next_token_id(self: @ContractState) -> u256 {
+            self._next_token_id.read()
+        }
+
 
         fn get_contribution_tier(self: @ContractState, contributor: ContractAddress) -> u32 {
             let master = self._master.read();
@@ -195,13 +199,13 @@ mod GuildSBT {
             let balance = erc721_self.balance_of(:account);
             assert (balance == 0, 'ALREADY_MINTED');
 
-            self._token_type.write(account, token_type);
             let master = self._master.read();
             let masterDispatcher = IMasterDispatcher { contract_address: master };
             let points = masterDispatcher.get_dev_points(account);
             let tier = InternalImpl::_get_contribution_tier(@self, points);
 
             assert (tier != 0, 'NOT_ENOUGH_POINTS');
+            self._token_type.write(account, token_type);
             let token_id = self._next_token_id.read();
             erc721_self._mint(to: account, token_id: token_id.into());
             self._wallet_of_owner.write(account, token_id);
@@ -232,10 +236,6 @@ mod GuildSBT {
 
         }
 
-
-
-
-
     }
 
     #[generate_trait]
@@ -249,12 +249,12 @@ mod GuildSBT {
             let mut current_index = 0_u32;
             let contribution_levels = self._contribution_levels.read();
             loop {
-                if (current_index == contribution_levels.len() - 1) {
-                    break true;
+                if (current_index == contribution_levels.len()) {
+                    break;
                 }
 
                 if (points < *contribution_levels[current_index]) {
-                    break true;
+                    break;
                 }
 
                 current_index += 1;

@@ -2,37 +2,24 @@
 // @author Mesh Finance
 // @license MIT
 // @notice Master to store contribution points
+// TODO:: modify the structure to add new guild in future.
 
 use starknet::ContractAddress;
-use zeroable::Zeroable;
-use array::{Array, ArrayTrait, SpanTrait};
-use serde::Serde;
-use traits::{Into, TryInto};
-use contributor_SBT2_0::array::StoreU32Array;
+use array::Array;
 
-
-
-// #[derive(Drop, Serde, starknet::Store)]
-// struct GuildPoints {
-//     // @notice the cummulative score for each contributor
-//     cum_score: u32,
-//     // @notice Monthly points for contribution for eg [Sept_2023 -> 250] will be written as [092023, 250]
-//     // even index as month_id, immediate right is points in that month
-//     data: Array<u32>
-// }
 
 #[derive(Drop, Serde, starknet::Store)]
 struct Contribution {
     // @notice Contribution for dev guild
-    dev: u32,//GuildPoints,
+    dev: u32,
     // @notice Contribution for design guild
-    design: u32,//GuildPoints,
+    design: u32,
     // @notice Contribution for problem solving guild
-    problem_solving: u32,//GuildPoints,
+    problem_solving: u32,
     // @notice Contribution for marcom guild
-    marcom: u32,//GuildPoints,
+    marcom: u32,
     // @notice Contribution for research guild
-    research: u32,//GuildPoints,
+    research: u32,
     // @notice timestamp for the last update
     last_timestamp: u64
 }
@@ -85,7 +72,7 @@ trait IGuild<T> {
 #[starknet::interface]
 trait IMaster<TContractState> {
     // view functions
-    fn get_contibutions_points(self: @TContractState, contributor: ContractAddress) -> Contribution;
+    fn get_contributions_points(self: @TContractState, contributor: ContractAddress) -> Contribution;
     fn get_dev_points(self: @TContractState, contributor: ContractAddress) -> u32;
     fn get_design_points(self: @TContractState, contributor: ContractAddress) -> u32;
     fn get_problem_solving_points(self: @TContractState, contributor: ContractAddress) -> u32;
@@ -128,7 +115,6 @@ mod Master {
     use starknet::{ContractAddress, ClassHash, SyscallResult, SyscallResultTrait, get_caller_address, get_contract_address, get_block_timestamp, contract_address_const};
     use integer::{u128_try_from_felt252, u256_sqrt, u256_from_felt252};
     use starknet::syscalls::{replace_class_syscall, call_contract_syscall};
-    // use alexandria_storage::list::{List, ListTrait};
     use contributor_SBT2_0::array::StoreU32Array;
 
     use super::{Contribution, MonthlyContribution, TotalMonthlyContribution};
@@ -142,8 +128,8 @@ mod Master {
     //
     #[storage]
     struct Storage {
-        _contributions: LegacyMap::<ContractAddress, Contribution>, // @dev contributions
-        _contributions_data: LegacyMap::<(ContractAddress, felt252), Array<u32>>, // @dev contributions
+        _contributions: LegacyMap::<ContractAddress, Contribution>, // @dev contributions points for each contributor
+        _contributions_data: LegacyMap::<(ContractAddress, felt252), Array<u32>>, // @dev contributions data for specific contributor and guild
         _total_contribution: LegacyMap::<u32, TotalMonthlyContribution>, // @dev total contribution month wise [month_id => points]
         _last_update_id: u32, // @dev contribution update id
         _last_update_time: u64, // @dev timestamp for last update
@@ -177,8 +163,7 @@ mod Master {
     #[derive(Drop, starknet::Event)]
     struct MigrationQueued {
         old_address: ContractAddress, 
-        new_address: ContractAddress, 
-        hash: felt252
+        new_address: ContractAddress
     }
 
     // @notice An event emitted whenever SBT is migrated
@@ -211,7 +196,7 @@ mod Master {
         //
         // Getters
         //
-        fn get_contibutions_points(self: @ContractState, contributor: ContractAddress) -> Contribution {
+        fn get_contributions_points(self: @ContractState, contributor: ContractAddress) -> Contribution {
             self._contributions.read(contributor)
         }
 
@@ -313,81 +298,35 @@ mod Master {
 
             loop {
                 if (current_index == contributions.len()) {
-                    break true;
+                    break;
                 }
                 let new_contributions: MonthlyContribution = *contributions[current_index];
                 let contributor: ContractAddress = new_contributions.contributor;
                 let old_contribution = self._contributions.read(contributor);
 
-                if (new_contributions.dev != 0) {
-                    let mut contribution_data_dev = self._contributions_data.read((contributor,'dev'));
+                let new_dev_contribution = InternalImpl::_update_guild_data(ref self, old_contribution.dev, new_contributions.dev, month_id, contributor, 'dev');
+                let new_design_contribution = InternalImpl::_update_guild_data(ref self, old_contribution.design, new_contributions.design, month_id, contributor, 'design');
+                let new_problem_solving_contribution = InternalImpl::_update_guild_data(ref self, old_contribution.problem_solving, new_contributions.problem_solving, month_id, contributor, 'problem_solving');
+                let new_marcom_contribution = InternalImpl::_update_guild_data(ref self, old_contribution.marcom, new_contributions.marcom, month_id, contributor, 'marcom');
+                let new_research_contribution = InternalImpl::_update_guild_data(ref self, old_contribution.research, new_contributions.research, month_id, contributor, 'research');
 
-                    contribution_data_dev.append(month_id);
-                    contribution_data_dev.append(new_contributions.dev);
-
-                    self._contributions_data.write((contributor,'dev'),contribution_data_dev);
-                }
-                let new_dev_contribution = old_contribution.dev + new_contributions.dev;
-
-
-
-                if (new_contributions.design != 0) {
-                    let mut contribution_data_design = self._contributions_data.read((contributor,'design'));
-
-                    contribution_data_design.append(month_id);
-                    contribution_data_design.append(new_contributions.design);
-                    
-                    self._contributions_data.write((contributor,'design'),contribution_data_design);
-
-                }
-                let new_design_contribution = old_contribution.design + new_contributions.design;
-
-
-                if (new_contributions.problem_solving != 0) {
-                    let mut contribution_data_problem_solving = self._contributions_data.read((contributor,'problem_solving'));
-
-                    contribution_data_problem_solving.append(month_id);
-                    contribution_data_problem_solving.append(new_contributions.problem_solving);
-
-                    self._contributions_data.write((contributor,'problem_solving'),contribution_data_problem_solving);
-
-                }
-                let new_problem_solving_contribution = old_contribution.problem_solving + new_contributions.problem_solving;
-
-
-                if (new_contributions.marcom != 0) {
-                    let mut contribution_data_marcom = self._contributions_data.read((contributor,'marcom'));
-
-                    contribution_data_marcom.append(month_id);
-                    contribution_data_marcom.append(new_contributions.marcom);
-
-                    self._contributions_data.write((contributor,'marcom'),contribution_data_marcom);
-                }
-                let new_marcom_contribution = old_contribution.marcom + new_contributions.marcom;
-
-
-                if (new_contributions.research != 0) {
-                    let mut contribution_data_research = self._contributions_data.read((contributor,'research'));
-
-                    contribution_data_research.append(month_id);
-                    contribution_data_research.append(new_contributions.research);
-                    
-                    self._contributions_data.write((contributor,'research'),contribution_data_research);
-
-                }
-                let new_research_contribution = old_contribution.research + new_contributions.research;
-
+                dev_total_cum += new_contributions.dev;
+                design_total_cum += new_contributions.design;
+                problem_solving_total_cum += new_contributions.problem_solving;
+                marcom_total_cum += new_contributions.marcom;
+                research_total_cum += new_contributions.research;
 
                 let updated_contribution = Contribution{dev: new_dev_contribution, design: new_design_contribution, problem_solving: new_problem_solving_contribution, marcom: new_marcom_contribution, research: new_research_contribution, last_timestamp: block_timestamp};
                 self._contributions.write(contributor, updated_contribution);
 
-                let total_monthy_contribution = TotalMonthlyContribution{dev: dev_total_cum, design: design_total_cum, problem_solving: problem_solving_total_cum, marcom: marcom_total_cum, research: research_total_cum};
-                self._total_contribution.write(month_id, total_monthy_contribution);
                 current_index += 1;
 
                 self.emit(ContributionUpdated{update_id: id, contributor: contributor, month_id: month_id, points_earned: new_contributions});
 
             };
+            let total_monthy_contribution = TotalMonthlyContribution{dev: dev_total_cum, design: design_total_cum, problem_solving: problem_solving_total_cum, marcom: marcom_total_cum, research: research_total_cum};
+            self._total_contribution.write(month_id, total_monthy_contribution);
+
             id += 1;
             self._last_update_id.write(id);
             self._last_update_time.write(block_timestamp);
@@ -402,7 +341,7 @@ mod Master {
 
             loop {
                 if (current_index == old_addresses.len()) {
-                    break true;
+                    break;
                 }
                 InternalImpl::_migrate_points(ref self, *old_addresses[current_index], *new_addresses[current_index]);
                 current_index += 1;
@@ -418,10 +357,11 @@ mod Master {
 
             self._queued_migrations.write(migration_hash, true);
 
-            self.emit(MigrationQueued { old_address: caller, new_address: new_address, hash: migration_hash});
+            self.emit(MigrationQueued { old_address: caller, new_address: new_address});
 
         }
 
+        // @Notice the function has only_owner modifier to prevent user to use this function to tranfer SBT anytime.
         fn execute_migrate_points_initiated_by_holder(ref self: ContractState, old_address: ContractAddress, new_address: ContractAddress) {
             self._only_owner();
             let migration_hash: felt252 = LegacyHash::hash(old_address.into(), new_address);
@@ -429,8 +369,9 @@ mod Master {
 
             assert(is_queued == true, 'NOT_QUEUED');
 
-            self._queued_migrations.write(migration_hash, false);
             InternalImpl::_migrate_points(ref self, old_address, new_address);
+            self._queued_migrations.write(migration_hash, false);
+
         }
 
 
@@ -443,6 +384,18 @@ mod Master {
         //
         // Internals
         //
+
+        fn _update_guild_data(ref self: ContractState, old_guild_score: u32, new_contribution_score: u32, month_id: u32, contributor: ContractAddress, guild: felt252) -> u32 {
+            let new_guild_score = old_guild_score + new_contribution_score;
+            if(new_contribution_score != 0) {
+                let mut contribution_data = self._contributions_data.read((contributor, guild));
+                    contribution_data.append(month_id);
+                    contribution_data.append(new_guild_score);
+
+                    self._contributions_data.write((contributor, guild), contribution_data);
+            }
+            (new_guild_score)
+        }
 
         fn _migrate_points(ref self: ContractState, old_address: ContractAddress, new_address: ContractAddress) {
 
@@ -464,42 +417,25 @@ mod Master {
             self._contributions.write(old_address, zero_contribution);
             self._contributions.write(new_address, contribution);
 
-            // updating contribution data
-            let dev_data = self._contributions_data.read((old_address, 'dev'));
-            let design_data = self._contributions_data.read((old_address, 'design'));
-            let problem_solving_data = self._contributions_data.read((old_address, 'problem_solving'));
-            let marcom_data = self._contributions_data.read((old_address, 'marcom'));
-            let research_data = self._contributions_data.read((old_address, 'research'));
-
-            self._contributions_data.write((new_address, 'dev'), dev_data);
-            self._contributions_data.write((new_address, 'design'), design_data);
-            self._contributions_data.write((new_address, 'problem_solving'), problem_solving_data);
-            self._contributions_data.write((new_address, 'marcom'), marcom_data);
-            self._contributions_data.write((new_address, 'research'), research_data);
-
-            self._contributions_data.write((old_address, 'dev'), ArrayTrait::new());
-            self._contributions_data.write((old_address, 'design'), ArrayTrait::new());
-            self._contributions_data.write((old_address, 'problem_solving'), ArrayTrait::new());
-            self._contributions_data.write((old_address, 'marcom'), ArrayTrait::new());
-            self._contributions_data.write((old_address, 'research'), ArrayTrait::new());
-
-            let dev_guildDispatcher = IGuildDispatcher { contract_address: dev_guild };
-            dev_guildDispatcher.migrate_sbt(old_address, new_address);
-
-            let design_guildDispatcher = IGuildDispatcher { contract_address: design_guild };
-            design_guildDispatcher.migrate_sbt(old_address, new_address);
-
-            let problem_solver_guildDispatcher = IGuildDispatcher { contract_address: problem_solver_guild };
-            problem_solver_guildDispatcher.migrate_sbt(old_address, new_address);
-
-            let marcom_guildDispatcher = IGuildDispatcher { contract_address: marcom_guild };
-            marcom_guildDispatcher.migrate_sbt(old_address, new_address);
-
-            let research_guildDispatcher = IGuildDispatcher { contract_address: research_guild };
-            research_guildDispatcher.migrate_sbt(old_address, new_address);
+            // updating contribution data and transfering SBTs
+            InternalImpl::_update_contribution_data_and_migrate(ref self, old_address, new_address, 'dev', dev_guild);
+            InternalImpl::_update_contribution_data_and_migrate(ref self, old_address, new_address, 'design', design_guild);
+            InternalImpl::_update_contribution_data_and_migrate(ref self, old_address, new_address, 'problem_solving', problem_solver_guild);
+            InternalImpl::_update_contribution_data_and_migrate(ref self, old_address, new_address, 'marcom', marcom_guild);
+            InternalImpl::_update_contribution_data_and_migrate(ref self, old_address, new_address, 'research', research_guild);
 
             self.emit(Migrated{old_address: old_address, new_address: new_address});
 
+        }
+
+        fn _update_contribution_data_and_migrate(ref self: ContractState, old_address: ContractAddress, new_address: ContractAddress, guild: felt252, guild_contract: ContractAddress) {
+            let guild_data = self._contributions_data.read((old_address, guild));
+
+            self._contributions_data.write((new_address, guild), guild_data);
+            self._contributions_data.write((old_address, guild), ArrayTrait::new());
+
+            let guildDispatcher = IGuildDispatcher { contract_address: guild_contract };
+            guildDispatcher.migrate_sbt(old_address, new_address);
         }
 
     }

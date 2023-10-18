@@ -5,7 +5,7 @@ use starknet::ClassHash;
 use traits::TryInto;
 use option::OptionTrait;
 use snforge_std::{ declare, ContractClassTrait };
-use tests::utils::{ deployer_addr, user1};
+use tests::utils::{ deployer_addr, user1, URI};
 
 
 #[starknet::interface]
@@ -25,15 +25,6 @@ trait IGuildSBT<T> {
 
 }
 
-fn URI() -> Span<felt252> {
-    let mut uri = ArrayTrait::new();
-
-    uri.append('api.jediswap/');
-    uri.append('guildSBT/');
-    uri.append('dev/');
-
-    uri.span()
-}
 
 #[test]
 fn test_deployment_master_guildSBT() { 
@@ -79,8 +70,10 @@ fn test_deployment_master_guildSBT() {
     assert(symbol == 'JEDI-DEV', 'Invalid symbol');
 
     let baseURI: Span<felt252> = guildSBT_dispatcher.baseURI();
-    // TODO: compare span with felt252
-    // assert(baseURI == 'api.jediswap/guildSBT/dev/', 'Invalid base uri');
+    assert(*baseURI[0] == 'api.jediswap/', 'Invlalid item 0');
+    assert(*baseURI[1] == 'guildSBT/', 'Invlalid item 1');
+    assert(*baseURI[2] == 'dev/', 'Invlalid item 2');
+    assert(baseURI.len() == 3, 'should be 3');
 
     let owner = guildSBT_dispatcher.owner();
     assert(owner == deployer_addr(), 'Invalid Owner');
