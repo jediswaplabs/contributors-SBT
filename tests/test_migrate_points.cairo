@@ -7,8 +7,8 @@ use option::OptionTrait;
 use snforge_std::{ declare, ContractClassTrait, ContractClass, start_warp, start_prank, stop_prank,
                    spy_events, SpyOn, EventSpy, EventFetcher, Event, EventAssertions };
 use tests::utils::{ deployer_addr, user1, user2, user3, user4, URI};
-use contributor_SBT2_0::Master::MonthlyContribution;
-use contributor_SBT2_0::Master::Contribution;
+use contributor_SBT2_0::master::MonthlyContribution;
+use contributor_SBT2_0::master::Contribution;
 
 #[starknet::interface]
 trait IMaster<TContractState> {
@@ -226,12 +226,11 @@ fn test_migrate_points_initiated_by_DAO() {
 }
 
 #[test]
-#[should_panic(expected: ('Caller is not the owner', ))]
 fn test_migrate_points_initiated_by_DAO_not_owner() { 
     let (master_address, dev_guildSBT_address, design_guildSBT_address, marcom_guildSBT_address, problem_solving_guildSBT_address, research_guildSBT_address) = deploy_contracts_and_initialise();
     let (user1_contribution, user2_contribution) = update_contribution_and_minting_sbt(master_address, dev_guildSBT_address, design_guildSBT_address, marcom_guildSBT_address, problem_solving_guildSBT_address, research_guildSBT_address);
 
-    let master_dispatcher = IMasterDispatcher { contract_address: master_address };
+    let safe_master_dispatcher = IMasterSafeDispatcher { contract_address: master_address };
     
     // migrating user1 -> user3 and user2 -> user4
     let mut old_addresses = ArrayTrait::new();
@@ -245,22 +244,13 @@ fn test_migrate_points_initiated_by_DAO_not_owner() {
     let mut spy = spy_events(SpyOn::One(master_address));
 
     start_prank(master_address, user1());
-    master_dispatcher.migrate_points_initiated_by_DAO(old_addresses, new_addresses);
+    match safe_master_dispatcher.migrate_points_initiated_by_DAO(old_addresses, new_addresses) {
+        Result::Ok(_) => panic_with_felt252('shouldve panicked'),
+        Result::Err(panic_data) => {
+            assert(*panic_data.at(0) == 'Caller is not the owner', *panic_data.at(0));
+        }
+    };
     stop_prank(master_address);
-
-    let mut event_data_1 = Default::default();
-    Serde::serialize(@user1(), ref event_data_1);
-    Serde::serialize(@user3(), ref event_data_1);
-    spy.assert_emitted(@array![
-        Event { from: master_address, name: 'Migrated', keys: array![], data: event_data_1 }
-    ]);
-
-    let mut event_data_2 = Default::default();
-    Serde::serialize(@user2(), ref event_data_2);
-    Serde::serialize(@user4(), ref event_data_2);
-    spy.assert_emitted(@array![
-        Event { from: master_address, name: 'Migrated', keys: array![], data: event_data_2 }
-    ]);
 
 }
 

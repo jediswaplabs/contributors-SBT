@@ -41,7 +41,7 @@ trait IGuildSBT<TContractState> {
 mod GuildSBT {
 
     use option::OptionTrait;
-    use traits::{Into, TryInto, Default, Felt252DictValue};
+    // use traits::Into;
     use array::{SpanSerde, ArrayTrait};
     use clone::Clone;
     use array::SpanTrait;
@@ -278,7 +278,7 @@ mod GuildSBT {
             let mut number: u128 = number_in.try_into().unwrap();
             let mut tmpArray: Array<felt252> = ArrayTrait::new();
             loop {
-                if number == 0 {
+                if (number == 0.try_into().unwrap()) {
                     break;
                 }
                 let digit: u128 = number % 10;
@@ -286,11 +286,11 @@ mod GuildSBT {
                 tmpArray.append(digit.into() + 48);
             };
             let mut i: u32 = tmpArray.len();
-            if i == 0 { // deal with 0 case
+            if (i == 0.try_into().unwrap()) { // deal with 0 case
                 uri.append(48);
             }
             loop {
-                if i == 0 {
+                if i == 0.try_into().unwrap() {
                     break;
                 }
                 i -= 1;

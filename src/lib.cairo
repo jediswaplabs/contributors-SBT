@@ -1,5 +1,5 @@
-mod Master;
+mod master;
 mod access;
 mod storage;
-mod GuildSBT;
+mod guildSBT;
 mod array;

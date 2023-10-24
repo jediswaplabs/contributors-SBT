@@ -414,15 +414,15 @@ mod Master {
                                                  last_timestamp: 0_u64
                                                 };
 
-            self._contributions.write(old_address, zero_contribution);
-            self._contributions.write(new_address, contribution);
-
             // updating contribution data and transfering SBTs
             InternalImpl::_update_contribution_data_and_migrate(ref self, old_address, new_address, 'dev', dev_guild);
             InternalImpl::_update_contribution_data_and_migrate(ref self, old_address, new_address, 'design', design_guild);
             InternalImpl::_update_contribution_data_and_migrate(ref self, old_address, new_address, 'problem_solving', problem_solver_guild);
             InternalImpl::_update_contribution_data_and_migrate(ref self, old_address, new_address, 'marcom', marcom_guild);
             InternalImpl::_update_contribution_data_and_migrate(ref self, old_address, new_address, 'research', research_guild);
+
+            self._contributions.write(old_address, zero_contribution);
+            self._contributions.write(new_address, contribution);
 
             self.emit(Migrated{old_address: old_address, new_address: new_address});
 
@@ -439,7 +439,6 @@ mod Master {
         }
 
     }
-
 
 
     #[generate_trait]

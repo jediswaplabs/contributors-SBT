@@ -7,9 +7,9 @@ use option::OptionTrait;
 use snforge_std::{ declare, ContractClassTrait, ContractClass, start_warp, start_prank, stop_prank,
                    spy_events, SpyOn, EventSpy, EventFetcher, Event, EventAssertions };
 use tests::utils::{ deployer_addr, user1, user2, user3, user4, URI};
-use contributor_SBT2_0::Master::MonthlyContribution;
-use contributor_SBT2_0::Master::Contribution;
-use contributor_SBT2_0::Master::TotalMonthlyContribution;
+use contributor_SBT2_0::master::MonthlyContribution;
+use contributor_SBT2_0::master::Contribution;
+use contributor_SBT2_0::master::TotalMonthlyContribution;
 
 #[starknet::interface]
 trait IMaster<TContractState> {

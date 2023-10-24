@@ -7,7 +7,7 @@ use option::OptionTrait;
 use snforge_std::{ declare, ContractClassTrait, ContractClass, start_warp, start_prank, stop_prank,
                    spy_events, SpyOn, EventSpy, EventFetcher, Event, EventAssertions };
 use tests::utils::{ deployer_addr, user1, user2, URI};
-use contributor_SBT2_0::Master::MonthlyContribution;
+use contributor_SBT2_0::master::MonthlyContribution;
 
 #[starknet::interface]
 trait IMaster<TContractState> {
@@ -119,7 +119,6 @@ fn test_mint() {
 }
 
 #[test]
-// #[should_panic(expected: ('ALREADY_MINTED', ))]
 fn test_mint_second_sbt() { 
     let (master_address, guildSBT_address) = deploy_contracts();
     let master_dispatcher = IMasterDispatcher { contract_address: master_address };
