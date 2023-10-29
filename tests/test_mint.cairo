@@ -12,7 +12,6 @@ use contributor_SBT2_0::master::MonthlyContribution;
 #[starknet::interface]
 trait IMaster<TContractState> {
     fn get_last_update_id(self: @TContractState) -> u32;
-    fn get_dev_points(self: @TContractState, contributor: ContractAddress) -> u32;
 
     fn update_contibutions(ref self: TContractState,  month_id: u32, contributions: Array::<MonthlyContribution>);
 

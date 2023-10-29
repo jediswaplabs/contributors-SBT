@@ -14,7 +14,6 @@ use contributor_SBT2_0::master::TotalMonthlyContribution;
 #[starknet::interface]
 trait IMaster<TContractState> {
     fn get_last_update_id(self: @TContractState) -> u32;
-    fn get_dev_points(self: @TContractState, contributor: ContractAddress) -> u32;
     fn get_contributions_points(self: @TContractState, contributor: ContractAddress) -> Contribution;
     fn get_contributions_data(self: @TContractState, contributor: ContractAddress, guild: felt252) -> Array<u32>;
     fn get_total_contribution(self: @TContractState, month_id: u32) -> TotalMonthlyContribution;

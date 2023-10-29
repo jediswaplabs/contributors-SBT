@@ -73,11 +73,7 @@ trait IGuild<T> {
 trait IMaster<TContractState> {
     // view functions
     fn get_contributions_points(self: @TContractState, contributor: ContractAddress) -> Contribution;
-    fn get_dev_points(self: @TContractState, contributor: ContractAddress) -> u32;
-    fn get_design_points(self: @TContractState, contributor: ContractAddress) -> u32;
-    fn get_problem_solving_points(self: @TContractState, contributor: ContractAddress) -> u32;
-    fn get_marcom_points(self: @TContractState, contributor: ContractAddress) -> u32;
-    fn get_research_points(self: @TContractState, contributor: ContractAddress) -> u32;
+    fn get_guild_points(self: @TContractState, contributor: ContractAddress, guild: felt252) -> u32;
     fn get_last_update_id(self: @TContractState) -> u32;
     fn get_last_update_time(self: @TContractState) -> u64;
     fn get_migartion_queued_state(self: @TContractState, hash: felt252 ) -> bool;
@@ -88,6 +84,8 @@ trait IMaster<TContractState> {
     fn get_research_guild_SBT(self: @TContractState) -> ContractAddress;
     fn get_total_contribution(self: @TContractState, month_id: u32) -> TotalMonthlyContribution;
     fn get_contributions_data(self: @TContractState, contributor: ContractAddress, guild: felt252) -> Array<u32>;
+    fn get_guild_total_contribution(self: @TContractState, month_id: u32, guild: felt252) -> u32;
+
 
     // external functions
     fn update_contibutions(ref self: TContractState,  month_id: u32, contributions: Array::<MonthlyContribution>);
@@ -204,33 +202,50 @@ mod Master {
             self._total_contribution.read(month_id)      
         }
 
+        fn get_guild_total_contribution(self: @ContractState, month_id: u32, guild: felt252) -> u32 {
+            if(guild == 'dev') {
+                self._total_contribution.read(month_id).dev
+            }
+            else if(guild == 'design') {
+                self._total_contribution.read(month_id).design
+            }
+            else if(guild == 'problem_solving') {
+                self._total_contribution.read(month_id).problem_solving
+            }
+            else if(guild == 'marcom') {
+                self._total_contribution.read(month_id).marcom
+            }
+            else if(guild == 'research') {
+                self._total_contribution.read(month_id).research
+            }
+            else {
+                0
+            }
+        }
+
         fn get_contributions_data(self: @ContractState, contributor: ContractAddress, guild: felt252) -> Array<u32> {
             self._contributions_data.read((contributor, guild))      
         }
 
-        fn get_dev_points(self: @ContractState, contributor: ContractAddress) -> u32 {
-            let contribution: Contribution = self._contributions.read(contributor);
-            contribution.dev  
-        }
-
-        fn get_design_points(self: @ContractState, contributor: ContractAddress) -> u32 {
-            let contribution = self._contributions.read(contributor);
-            contribution.design
-        }
-
-        fn get_problem_solving_points(self: @ContractState, contributor: ContractAddress) -> u32 {
-            let contribution = self._contributions.read(contributor);
-            contribution.problem_solving
-        }
-
-        fn get_marcom_points(self: @ContractState, contributor: ContractAddress) -> u32 {
-            let contribution = self._contributions.read(contributor);
-            contribution.marcom
-        }
-
-        fn get_research_points(self: @ContractState, contributor: ContractAddress) -> u32 {
-            let contribution = self._contributions.read(contributor);
-            contribution.research
+        fn get_guild_points(self: @ContractState, contributor: ContractAddress, guild: felt252) -> u32 {
+            if(guild == 'dev') {
+                self._contributions.read(contributor).dev
+            }
+            else if(guild == 'design') {
+                self._contributions.read(contributor).design
+            }
+            else if(guild == 'problem_solving') {
+                self._contributions.read(contributor).problem_solving
+            }
+            else if(guild == 'marcom') {
+                self._contributions.read(contributor).marcom
+            }
+            else if(guild == 'research') {
+                self._contributions.read(contributor).research
+            }
+            else {
+                0
+            }  
         }
 
         fn get_last_update_id(self: @ContractState) -> u32 {
@@ -390,7 +405,7 @@ mod Master {
             if(new_contribution_score != 0) {
                 let mut contribution_data = self._contributions_data.read((contributor, guild));
                     contribution_data.append(month_id);
-                    contribution_data.append(new_guild_score);
+                    contribution_data.append(new_contribution_score);
 
                     self._contributions_data.write((contributor, guild), contribution_data);
             }

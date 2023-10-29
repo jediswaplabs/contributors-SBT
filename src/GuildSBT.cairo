@@ -9,7 +9,7 @@ use array::Array;
 
 #[starknet::interface]
 trait IMaster<T> {
-    fn get_dev_points(self: @T, contributor: ContractAddress) -> u32;
+    fn get_guild_points(self: @T, contributor: ContractAddress, guild: felt252) -> u32;
 }
 
 //
@@ -114,7 +114,7 @@ mod GuildSBT {
             let master = self._master.read();
             let masterDispatcher = IMasterDispatcher { contract_address: master };
             // @notice this is a sample SBT contract for dev guild, update the next line before deploying other guild
-            let points = masterDispatcher.get_dev_points(owner);
+            let points = masterDispatcher.get_guild_points(owner, 'dev');
             let token_type = self._token_type.read(owner);
 
             let tier = InternalImpl::_get_contribution_tier(self, points);
@@ -129,7 +129,7 @@ mod GuildSBT {
             let master = self._master.read();
             let masterDispatcher = IMasterDispatcher { contract_address: master };
             // @notice this is a sample SBT contract for dev guild, update the next line before deploying other guild
-            let points = masterDispatcher.get_dev_points(contributor);
+            let points = masterDispatcher.get_guild_points(contributor, 'dev');
             let token_type = self._token_type.read(contributor);
 
             let tier = InternalImpl::_get_contribution_tier(self, points);
@@ -151,7 +151,7 @@ mod GuildSBT {
         fn get_contribution_tier(self: @ContractState, contributor: ContractAddress) -> u32 {
             let master = self._master.read();
             let masterDispatcher = IMasterDispatcher { contract_address: master };
-            let points = masterDispatcher.get_dev_points(contributor);
+            let points = masterDispatcher.get_guild_points(contributor, 'dev');
             InternalImpl::_get_contribution_tier(self, points)
         }
 
@@ -201,7 +201,7 @@ mod GuildSBT {
 
             let master = self._master.read();
             let masterDispatcher = IMasterDispatcher { contract_address: master };
-            let points = masterDispatcher.get_dev_points(account);
+            let points = masterDispatcher.get_guild_points(account, 'dev');
             let tier = InternalImpl::_get_contribution_tier(@self, points);
 
             assert (tier != 0, 'NOT_ENOUGH_POINTS');
