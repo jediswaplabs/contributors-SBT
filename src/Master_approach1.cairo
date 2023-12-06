@@ -4,7 +4,7 @@
 // @notice Master to store contribution points
 
 // ************************************
-// @notice this approach is abandoned because issue with storing of array
+// @notice this approach is abandoned because issue with storing of array inside struct
 // Can refer it in future (if possible to implement)
 // ************************************
 
